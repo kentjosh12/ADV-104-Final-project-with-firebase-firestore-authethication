@@ -1,98 +1,153 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { db } from '../../firebase';
+import { collection, getDocs, query, deleteDoc, doc } from 'firebase/firestore';
+import StoreCard from '../components/StoreCard';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+interface Store {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: any;
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+export default function StoresScreen() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingStoreId, setDeletingStoreId] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Load stores when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 Loading stores...');
+      loadStores();
+    }, [])
+  );
+
+  const loadStores = async () => {
+    try {
+      setLoading(true);
+      console.log('📡 Loading stores from Firebase...');
+      
+      const storesQuery = query(collection(db, 'stores'));
+      const querySnapshot = await getDocs(storesQuery);
+      const storesList: Store[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const storeData = doc.data();
+        storesList.push({ 
+          id: doc.id, 
+          ...storeData 
+        } as Store);
+      });
+      
+      console.log(`📊 Loaded ${storesList.length} stores`);
+      setStores(storesList);
+
+    } catch (error: any) {
+      console.error('❌ Error loading stores:', error);
+      Alert.alert('Error', 'Failed to load stores: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStorePress = (store: Store) => {
+    router.push(`/(tabs)/products?storeId=${store.id}&storeName=${encodeURIComponent(store.name)}`);
+  };
+
+  const handleDeleteStore = async (store: Store) => {
+    console.log('🗑️ Deleting store:', store.name);
+    
+    try {
+      setDeletingStoreId(store.id);
+      
+      await deleteDoc(doc(db, 'stores', store.id));
+      console.log('✅ Store deleted successfully!');
+
+      // Update UI immediately
+      setStores(prevStores => prevStores.filter(s => s.id !== store.id));
+      
+      Alert.alert('Success!', `Store "${store.name}" has been deleted.`);
+
+    } catch (error: any) {
+      console.error('❌ Delete failed:', error);
+      Alert.alert('Error', `Failed to delete store "${store.name}".\n\nError: ${error.message}`);
+    } finally {
+      setDeletingStoreId(null);
+    }
+  };
+
+  const handleAddStore = () => {
+    console.log('➡️ Navigating to add store screen');
+    router.push('/add-store');
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={{ marginTop: 10 }}>Loading stores...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, padding: 16, backgroundColor: '#f8fafc' }}>
+      <Text style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+        My Stores
+      </Text>
+
+      <TouchableOpacity 
+        style={{
+          backgroundColor: '#2563eb',
+          padding: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+        onPress={handleAddStore}
+      >
+        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+          ➕ Add New Store
+        </Text>
+      </TouchableOpacity>
+
+      {stores.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 20 }}>
+            No stores found.{'\n'}Create your first store!
+          </Text>
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#2563eb',
+              padding: 12,
+              borderRadius: 8,
+            }}
+            onPress={handleAddStore}
+          >
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+              Create First Store
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={stores}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <StoreCard 
+              store={item} 
+              onPress={() => handleStorePress(item)}
+              onDelete={handleDeleteStore}
+              isDeleting={deletingStoreId === item.id}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </View>
+  );
+}
