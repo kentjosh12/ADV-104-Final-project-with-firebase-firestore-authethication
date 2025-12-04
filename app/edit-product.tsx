@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+// File: app/edit-product.tsx
+
 import { router, useLocalSearchParams } from 'expo-router';
-import { db, auth } from '../firebase';
-import { doc, updateDoc, query, where, getDocs, collection, addDoc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
+// 🛑 Changed: Import only 'db' for Firestore
+import { db } from '../firebase';
+// 🛑 Added: Use the custom stateful hook for user data
+import { addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { useAuth } from '../src/hooks/useAuth';
 
 interface Product {
-  id: string;
+  id: string; // Add ID here for consistency, though implicitly available via productId
   name: string;
   displayName: string;
   price: number;
   quantity: number;
+  userId?: string; // Add optional userId property
 }
 
 export default function EditProductScreen() {
@@ -21,6 +27,9 @@ export default function EditProductScreen() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  // 🛑 Get user from the custom hook
+  const { user } = useAuth(); 
+
   useEffect(() => {
     console.log('EditProductScreen params:', { storeId, storeName, productId });
     if (productId) {
@@ -29,7 +38,8 @@ export default function EditProductScreen() {
       setInitialLoading(false);
       Alert.alert('Error', 'No product ID provided');
     }
-  }, [productId]);
+    // Dependency array cleaned up to avoid unnecessary re-runs
+  }, [productId]); 
 
   const loadProduct = async () => {
     try {
@@ -49,11 +59,13 @@ export default function EditProductScreen() {
         return;
       }
 
-      const productData = productDoc.data() as Product;
+      // Ensure the id is included in the state
+      const productData = { id: productDoc.id, ...productDoc.data() } as Product;
       console.log('Product data loaded:', productData);
       
       setProduct(productData);
       setProductName(productData.displayName || productData.name || '');
+      // Ensure the price and quantity are strings for TextInput
       setPrice(productData.price.toString());
       setQuantity(productData.quantity.toString());
       
@@ -66,101 +78,103 @@ export default function EditProductScreen() {
   };
 
   const handleUpdateProduct = async () => {
-  // Validate inputs
-  if (!productName.trim()) {
-    Alert.alert('Error', 'Please enter a product name');
-    return;
-  }
-
-  if (!price || !quantity) {
-    Alert.alert('Error', 'Please fill all fields');
-    return;
-  }
-
-  const priceValue = parseFloat(price);
-  const quantityValue = parseInt(quantity);
-
-  if (isNaN(priceValue) || priceValue <= 0) {
-    Alert.alert('Error', 'Please enter a valid price');
-    return;
-  }
-
-  if (isNaN(quantityValue) || quantityValue < 0) {
-    Alert.alert('Error', 'Please enter a valid quantity');
-    return;
-  }
-
-  try {
-    setLoading(true);
-      
-    console.log('Update attempt with:', {
-      storeId,
-      productId,
-      productName,
-      price: priceValue,
-      quantity: quantityValue
-    });
-
-    if (!storeId) {
-      Alert.alert('Error', 'Store ID is missing');
+    // Validate inputs
+    if (!productName.trim()) {
+      Alert.alert('Error', 'Please enter a product name');
       return;
     }
 
-    if (!productId) {
-      Alert.alert('Error', 'Product ID is missing');
+    if (!price || !quantity) {
+      Alert.alert('Error', 'Please fill all fields');
       return;
     }
 
-    // Check if product name already exists (excluding current product)
-    const currentProductName = product?.name || '';
-    if (productName.trim().toLowerCase() !== currentProductName.toLowerCase()) {
-      console.log('Checking for duplicate product names...');
-      const productsQuery = query(
-        collection(db, 'products'),
-        where('storeId', '==', storeId),
-        where('name', '==', productName.trim().toLowerCase())
-      );
-      const querySnapshot = await getDocs(productsQuery);
+    const priceValue = parseFloat(price);
+    const quantityValue = parseInt(quantity);
+
+    if (isNaN(priceValue) || priceValue <= 0) {
+      Alert.alert('Error', 'Please enter a valid price');
+      return;
+    }
+
+    if (isNaN(quantityValue) || quantityValue < 0) {
+      Alert.alert('Error', 'Please enter a valid quantity');
+      return;
+    }
+
+    if (!storeId || !productId) {
+      Alert.alert('Error', 'Missing store or product ID');
+      return;
+    }
+
+    try {
+      setLoading(true);
       
-      if (!querySnapshot.empty) {
-        Alert.alert('Error', 'A product with this name already exists in this store');
-        return;
+      console.log('Update attempt with:', {
+        storeId,
+        productId,
+        productName,
+        price: priceValue,
+        quantity: quantityValue
+      });
+
+      // Check if product name already exists (excluding current product)
+      const currentProductName = product?.name || '';
+      if (productName.trim().toLowerCase() !== currentProductName.toLowerCase()) {
+        console.log('Checking for duplicate product names...');
+        const productsQuery = query(
+          collection(db, 'products'),
+          where('storeId', '==', storeId),
+          where('name', '==', productName.trim().toLowerCase())
+        );
+        const querySnapshot = await getDocs(productsQuery);
+        
+        if (!querySnapshot.empty) {
+          // Check if the duplicate product found is NOT the current product being edited
+          const existingProduct = querySnapshot.docs[0];
+          if (existingProduct.id !== productId) {
+             Alert.alert('Error', 'A product with this name already exists in this store');
+             return;
+          }
+        }
       }
+
+      // Determine the User ID for the log
+      const userId = user?.uid || 'anonymous'; 
+
+      // Update product
+      console.log('Updating product in Firestore...');
+      const productRef = doc(db, 'products', productId as string);
+      await updateDoc(productRef, {
+        name: productName.trim().toLowerCase(),
+        displayName: productName.trim(),
+        price: priceValue,
+        quantity: quantityValue,
+        updatedAt: new Date(),
+      });
+
+      // Add log
+      console.log('Adding log entry...');
+      await addDoc(collection(db, 'logs'), {
+        storeId: storeId as string,
+        // 🛑 FIX: Add the userId to the log entry
+        userId: userId, 
+        action: `Updated product: ${productName.trim()} (Quantity: ${quantityValue}, Price: ₱${priceValue})`,
+        timestamp: new Date(),
+      });
+
+      console.log('Product updated successfully!');
+      Alert.alert('Success', 'Product updated successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+
+    } catch (error: any) {
+      console.error('Error updating product:', error);
+      Alert.alert('Error', 'Failed to update product: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-
-    // Update product
-    console.log('Updating product in Firestore...');
-    const productRef = doc(db, 'products', productId as string);
-    await updateDoc(productRef, {
-      name: productName.trim().toLowerCase(),
-      displayName: productName.trim(),
-      price: priceValue,
-      quantity: quantityValue,
-      updatedAt: new Date(),
-    });
-
-    // Add log (without user ID for now)
-    console.log('Adding log entry...');
-    await addDoc(collection(db, 'logs'), {
-      storeId: storeId as string,
-      action: `Updated product: ${productName.trim()} (Quantity: ${quantityValue}, Price: ₱${priceValue})`,
-      timestamp: new Date(),
-    });
-
-    console.log('Product updated successfully!');
-    Alert.alert('Success', 'Product updated successfully!', [
-      { text: 'OK', onPress: () => router.back() }
-    ]);
-
-  } catch (error: any) {
-    console.error('Error updating product:', error);
-    Alert.alert('Error', 'Failed to update product: ' + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  
+  };
 
   if (initialLoading) {
     return (
@@ -201,12 +215,9 @@ export default function EditProductScreen() {
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: '#f8fafc' }}>
       <Text style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
-        Edit Product
+        Edit {product.displayName} in {storeName}
       </Text>
 
-      
-      
-      
       <TextInput
         style={{
           backgroundColor: 'white',

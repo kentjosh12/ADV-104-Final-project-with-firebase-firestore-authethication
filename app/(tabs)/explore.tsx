@@ -1,112 +1,96 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 
-export default function TabTwoScreen() {
+export default function AboutMeScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
+      headerBackgroundColor={{ light: '#F3F4F6', dark: '#111827' }}
+      headerImage={<Image source={require('../../assets/images/icon.png')} style={styles.headerImage} />}
+    >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
+        <ThemedText type="title" style={{ fontFamily: Fonts.rounded }}>
+          About Me
         </ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
+
+      <View style={styles.hero}>
+        <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
+      </View>
+
+      <ThemedText style={styles.paragraph}>
+        Hi — I&apos;m Kent Josh M. Gutierrez, the creator of this app. I built this project as the
+        final assignment for ADV104 to demonstrate a full-stack mobile app using Expo and Firebase.
+      </ThemedText>
+
+      <ThemedText style={styles.paragraph}>
+        This app is designed to help manage simple inventory across stores. You can create stores,
+        add and edit products, and view logs of changes. I focused on secure access (per-user
+        documents enforced by Firestore rules), a clean interface, and realtime updates using
+        Firestore listeners.
+      </ThemedText>
+
+      <ThemedText style={styles.subTitle}>Technologies</ThemedText>
+      <ThemedText style={styles.paragraph}>- Expo / React Native</ThemedText>
+      <ThemedText style={styles.paragraph}>- Firebase Authentication & Firestore</ThemedText>
+      <ThemedText style={styles.paragraph}>- TypeScript, Expo Router, and modular React hooks</ThemedText>
+
+      <ThemedText style={styles.subTitle}>Planned Improvements</ThemedText>
+      <ThemedText style={styles.paragraph}>
+        I plan to add better syncing for offline use, performance tuning for large stores, improved
+        accessibility, and optional image uploads for product photos. If you&apos;d like to help or
+        suggest features, reach out — I appreciate feedback!
+      </ThemedText>
+
+      <ThemedText style={styles.subTitle}>Credits</ThemedText>
+      <ThemedText style={styles.paragraph}>
+        Built by Kent Josh M. Gutierrez for ADV104. Thank you to the course instructors and
+        classmates for guidance during development.
+      </ThemedText>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
   titleContainer: {
     flexDirection: 'row',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hero: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  logo: {
+    width: 160,
+    height: 160,
+    borderRadius: 18,
+  },
+  paragraph: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+    fontSize: 16,
+    color: '#2e3a4cff',
+    lineHeight: 22,
+  },
+  subTitle: {
+    paddingHorizontal: 16,
+    marginTop: 18,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#778197ff',
+  },
+  headerImage: {
+    width: 220,
+    height: 220,
+    alignSelf: 'center',
+    opacity: 0.9,
   },
 });

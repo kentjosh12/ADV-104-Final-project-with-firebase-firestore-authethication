@@ -1,29 +1,19 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+// firebase.ts
+import { getApps, initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCOZ3EDgsSvIXZ_MSSzB93obMSeVC3JPjM",
-    authDomain: "sari-sari-storage-9f8c0.firebaseapp.com",
-    projectId: "sari-sari-storage-9f8c0",
-    storageBucket: "sari-sari-storage-9f8c0.firebasestorage.app",
-    messagingSenderId: "825901469155",
-    appId: "1:825901469155:web:6347823658ddb226bea4d6"
+   apiKey: "AIzaSyCpgj-lcr1STUV5KnB7YlVK7SaIgOYigyA",
+  authDomain: "storage-dae8b.firebaseapp.com",
+  projectId: "storage-dae8b",
+  storageBucket: "storage-dae8b.firebasestorage.app",
+  messagingSenderId: "773581523082",
+  appId: "1:773581523082:web:e2beafe40c77d843f40573"
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+
 export const auth = getAuth(app);
-
-// Auto-signin anonymously on app start
-export const initializeAuth = async () => {
-  try {
-    await signInAnonymously(auth);
-    console.log('✅ Signed in anonymously');
-  } catch (error) {
-    console.log('Anonymous auth failed:', error);
-  }
-};
-
-// Initialize auth when this file loads
-initializeAuth();
+export const db = getFirestore(app);
+export default app;
